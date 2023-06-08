@@ -1,0 +1,8 @@
+[submodule "preprocess"]
+	path = preprocess
+	branch = main
+	url = https://github.com/CassiniHuy/image-low-pass-filters-pytorch
+[submodule "wav2vec2"]
+	path = wav2vec2
+	branch = main
+	url = git@github.com:CassiniHuy/wav2vec2_finetune.git
