@@ -2,69 +2,7 @@ from typing import Callable, Dict, Tuple, Union
 import torch
 import inspect, sys
 from torch import Tensor
-# from attack.feature_extractor import FeatureExtractor
 
-
-# class LpLoss():
-#     name = 'lp'
-
-#     def __init__(self, reference: Tensor = None, p: float = 2):
-#         self.p = p
-#         self.set_reference(reference)
-
-#     def feature(self, x: Tensor):
-#         return x
-
-#     def set_reference(self, x: Tensor):
-#         if x is None:
-#             self.ref_feats = None
-#         else:
-#             self.ref_feats = self.feature(x).detach()
-
-#     def to(self, device):
-#         if self.ref_feats is not None:
-#             self.ref_feats = self.ref_feats.to(device)
-#         return self
-
-#     def __call__(self, x, reference: Tensor = None) -> Tensor:
-#         if reference is not None:
-#             ref_feats = self.feature(reference)
-#         else:
-#             if self.ref_feats is None:
-#                 raise ValueError('Refernce tensor not set.')
-#             ref_feats = self.ref_feats
-#         x_feats = self.feature(x)
-#         return torch.norm(x_feats - ref_feats, p=self.p)
-
-
-# class Mels(LpLoss):
-#     name = 'mels'
-
-#     def __init__(self,
-#                  alpha=0.7,
-#                  sr=16000,
-#                  n_features=80,
-#                  winlen=0.025,
-#                  winstep=0.010,
-#                  **kwargs):
-#         import torchaudio
-#         self.alpha = alpha
-#         self._n_features = n_features
-#         self.melspec = torchaudio.transforms.MelSpectrogram(
-#             sr,
-#             n_fft=int(winlen * sr),
-#             hop_length=int(winstep * sr),
-#             n_mels=n_features)
-#         super().__init__(**kwargs)
-    
-#     def to(self, device):
-#         self.melspec.to(device=device)
-#         return super().to(device)
-
-#     def feature(self, x):
-#         mels = self.melspec(x)
-#         valid_n = int(self.alpha * self._n_features)
-#         return mels[:, :valid_n, :]
 
 class Mels():
     name = 'mels'
@@ -93,41 +31,6 @@ class Mels():
         mels = self.melspec(x)
         valid_n = int(self.alpha * self._n_features)
         return mels[:, :valid_n, :]
-
-# class FeatureLoss(LpLoss):
-#     name = 'feature_loss'
-
-#     def __init__(self, model, return_layer=None, transform=None, **kwargs):
-#         self.m = FeatureExtractor(model, return_layer)
-#         self.transform = transform
-#         if self.transform is None:
-#             self.transform = lambda x: x
-#         super().__init__(**kwargs)
-    
-#     def to(self, device):
-#         self.m.model.to(device)
-#         return super().to(device)
-
-#     def feature(self, x):
-#         return self.m(self.transform(x))
-
-
-# class PerceptualLoss(LpLoss):
-#     name = 'perceptual_loss'
-
-#     def __init__(self, model='vgg16', **kwargs):
-#         import timm
-#         self.feats_extractor = timm.create_model(model,
-#                                                  features_only=True,
-#                                                  pretrained=True)
-#         super().__init__(**kwargs)
-    
-#     def to(self, device):
-#         self.feats_extractor.to(device)
-#         return super().to(device)
-
-#     def feature(self, x):
-#         return self.feats_extractor(x)
 
 
 class BackdoorLoss():

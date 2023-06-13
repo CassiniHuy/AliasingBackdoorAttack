@@ -29,6 +29,7 @@ def insert(
     logf(f'Get model preprocess args: input size={input_size}, mean={mean}, std={std}')
     strided_layer_name, strided_layer = tools.get_strided_layer(model)
     logf(f"Insert aliasing backdoor into {strided_layer_name}: {strided_layer}")
+    assert torch.prod(torch.tensor(strided_layer.stride)).item() > 1, "The stride of the layer is too small to insert aliasing backdoor"
 
     # * Load inducing samples
     logf(f'Source inducing sample loading from {x_src}')

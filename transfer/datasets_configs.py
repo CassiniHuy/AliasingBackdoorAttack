@@ -24,8 +24,8 @@ class BirdConfig(DatasetConfig):
 
 @dataclass
 class PetsConfig(DatasetConfig):
-    root: str = './.cache/datasets/images'
-    root_anno: str = './.cache/datasets/annotations'
+    root: str = '../aliasingattack/./.cache/datasets/images'
+    root_anno: str = '../aliasingattack/./.cache/datasets/annotations'
 
 @dataclass
 class CarsConfig(DatasetConfig):

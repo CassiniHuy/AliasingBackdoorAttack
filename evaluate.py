@@ -11,7 +11,7 @@ argparser.add_argument('--model', type=str)
 argparser.add_argument('--weight', type=str)
 argparser.add_argument('--folder', type=str,)
 argparser.add_argument('--dataset', type=str, choices=['pets37', 'flowers', 'caltech101', 'caltech256', 'cifar10'], default='pets37')
-argparser.add_argument('--trigger-folder', dest='trigger_folder', action='store_true', default=False)
+argparser.add_argument('--unformatted', action='store_true', default=False)
 argparser.add_argument('--source-acc', dest='source_acc', action='store_true', default=False)
 argparser.add_argument('--exts', type=str, nargs='+', default=None)
 argparser.add_argument('--input-size', dest='input_size', type=int, default=None)
@@ -49,7 +49,7 @@ logger.info(f'Get model input size={input_size}, mean={model.mean}, std={model.s
 if args.exts is None:
     args.exts = ['png', 'jpg', 'jpeg']
 imgs = list()
-if args.trigger_folder is True:
+if args.unformatted is False:
     for ext in args.exts:
         imgs += tools.find_file(
             path.join(args.folder, 'imgs'), pattern='*.' + ext, return_all=True)
@@ -60,7 +60,7 @@ else:
     logger.info(f'Find {len(imgs)} from {args.folder}')
 
 if args.source_acc:
-    logger.info('Evaluete the source accuracy.')
+    logger.info('Evaluate the source accuracy.')
 
 # * predict
 def get_source_or_target(img: str, class_name: str):
@@ -100,7 +100,7 @@ for img in imgs:
     # Compute Accuracy
     if_hit = (adv_pred == x_src_class)
     n_hit += int(if_hit)
-    if args.trigger_folder is True:
+    if args.unformatted is False:
         if args.source_acc is True:
             # Get prediction
             src_img = get_source_or_target(img, x_src_class)
@@ -132,7 +132,7 @@ save_path = path.join(args.folder, tools.timestr() + f"_{'src' if args.source_ac
 
 adv_acc = n_hit / len(imgs)
 logger.info(f'Model accuracy on the attack samples: {adv_acc:.4f} (ERR: {1 - adv_acc:.4f})')
-if args.trigger_folder is True:
+if args.unformatted is False:
     if args.source_acc is True:
         acc = n_true / len(imgs)
         tools.write_json(
@@ -151,8 +151,3 @@ else:
         save_path, 
         data=dict(args=args.__dict__, results=results))
 logger.info(f'Results saved to {save_path}')
-
-print(f'D0={args.D0}, n={args.n}, ASR, EASR, ERR:')
-print(f'{asr:.4f}')
-print(f'{easr:.4f}')
-print(f'{1 - adv_acc:.4f}')

@@ -6,6 +6,7 @@ datasets/
 *__pycache__*/
 .vscode/
 notebooks/
+.ipynb_checkpoints/
 *.log
 *.tar.gz
 *.sh
