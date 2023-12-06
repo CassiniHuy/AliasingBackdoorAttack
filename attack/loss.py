@@ -25,9 +25,9 @@ class Mels():
     
     def to(self, device):
         self.melspec.to(device=device)
-        return super().to(device)
+        return self
 
-    def forward(self, x):
+    def __call__(self, x):
         mels = self.melspec(x)
         valid_n = int(self.alpha * self._n_features)
         return mels[:, :valid_n, :]

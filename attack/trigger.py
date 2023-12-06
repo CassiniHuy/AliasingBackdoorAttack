@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Callable
+from typing import Dict, List, Tuple, Callable, Union
 import torch
 from torchvision import transforms
 from attack import Optimizer, FeatureExtractor, Mels
@@ -10,8 +10,8 @@ from logging import Logger
 class TriggerGenerator():
     def __init__(
         self, model: torch.nn.Module, 
-        transform: Callable[[Tensor], Tensor],
         lambda_: float, audio=False,
+        transform: Callable[[Tensor], Tensor] = None,
         lr: float = 0.1, iters: int = 500,
         layer_name: str = None,
         cuda: bool = True, logger: Logger = None, quiet: bool = False,
@@ -23,13 +23,17 @@ class TriggerGenerator():
         self.lambda_ = lambda_
         self.lr = lr
         self.iters = iters
+        self.audio = audio
 
         # * Get preprocess args
         self.clamp_min=-1 if audio is True else 0
-        self.input_size = model.input_size
-        self.transform = transform
-        self.logf(f'Get model preprocess args: '
-            f'input size={self.input_size}')
+        if audio is True:
+            self.transform = lambda x: x
+        else:
+            self.input_size = model.input_size
+            self.transform = transform
+            self.logf(f'Get model preprocess args: '
+                f'input size={self.input_size}')
         
         # * Get feature extractors
         if layer_name is None:
@@ -55,11 +59,18 @@ class TriggerGenerator():
         return src_tensor, tgt_dists[0]
 
     def trigger(
-        self, x_src: str, x_tgt: List[str],
+        self, x_src: str, x_tgt: Union[List[str], str],
         ) -> Tuple[str, Tensor, Dict[str, float]]:
         self.fq.model.eval()
-        x_src, target = self.select_target(x_src, x_tgt)
-        path_tgt, x_tgt, _ = target
+        if self.audio is True:
+            if isinstance(x_tgt, str) is False:
+                self.logf(f'Audio trigger generation needs single wav file as target. ')
+            else:
+                path_tgt = x_tgt
+                x_src, x_tgt, _ = tools.load_wav2(x_src, x_tgt, sr=16000)
+        else:
+            x_src, target = self.select_target(x_src, x_tgt)
+            path_tgt, x_tgt, _ = target
         opt = Optimizer(
             'triggerloss', 
             fq=self.fq, transform=self.transform, x_tgt=x_tgt.cuda(), 

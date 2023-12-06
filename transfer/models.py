@@ -1,6 +1,7 @@
-from typing import Union, Tuple
 import torch, timm, os, urllib, torch
 from torchvision import transforms
+from facenet_pytorch import InceptionResnetV1
+from typing import Union, Tuple
 
 
 def freeze_norm_layers(model) -> torch.nn.Module:
@@ -187,6 +188,42 @@ def load_timm_model(model_name: str,
     model = set_preprocess_timm(model, input_size, mean, std)
     return model
 
+######################################## FaceNet #######################################################
+
+def load_facenet(num_classes: int = None,
+                 pretrained: Union[bool, str] = True,
+                 input_size: Union[Tuple[int], int] = None,
+                 mean: Union[Tuple[float], float] = None,
+                 std: Union[Tuple[float], float] = None,):
+    # * Default preprocess args
+    facenet_mean = mean if mean else 127.5 / 256
+    facenet_std = std if std else 128.0 / 256
+    facenet_input_size = input_size if input_size else (160, 160)
+    resize = transforms.Resize(facenet_input_size)
+    normalize = transforms.Normalize(facenet_mean, facenet_std)
+
+    trans = transforms.Compose([
+        resize,
+        transforms.ToTensor(),
+        normalize
+    ])
+    # Load model with specified class num
+    resnet = InceptionResnetV1(
+        classify=True,
+        pretrained='vggface2',
+        num_classes=num_classes
+    )
+    # Load pretrained weights (unstrict)
+    if isinstance(pretrained, str):
+        weight_dict = torch.load(pretrained)
+        del weight_dict['logits.weight']
+        del weight_dict['logits.bias']
+        resnet.load_state_dict(weight_dict, strict=False)
+    # Load preprocess args
+    set_model_preprocess(resnet, trans, normalize, resize, 
+                                 facenet_input_size, 3, facenet_mean, facenet_std)
+    return resnet
+
 
 ###################################### Load model ######################################################
 
@@ -204,6 +241,9 @@ def create_model(model_name: str,
         model = load_miil_model(
                 num_classes=num_classes, pretrained=pretrained, 
                 input_size=input_size, mean=mean, std=std)
+    elif model_name == 'facenet':
+        model = load_facenet(num_classes=num_classes, pretrained=pretrained, 
+                             input_size=input_size, mean=mean, std=std)
     else:   # From timm library
         model = load_timm_model(
                 model_name=model_name, num_classes=num_classes, pretrained=pretrained, 

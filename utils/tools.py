@@ -98,17 +98,6 @@ def log_to_file(*logs: list, p: bool = True):
         print(log_str)
 
 
-def get_sizes_and_plot(img_dir: str):
-    import seaborn as sns
-    sizes = []
-    for root, _, imgs in os.walk(img_dir):
-        for img in imgs:
-            sizes.append(Image.open(os.path.join(root, img)).size)
-    sns.jointplot(data=sizes)
-    plt.show()
-    return sizes
-
-
 def print_layer_names(model_name: str):
     import timm
     m = timm.create_model(model_name)
@@ -145,7 +134,10 @@ def load_wav2(path1, path2, sr=16000):
 
 
 def makedir(path: str) -> str:
-    dirname = os.path.dirname(path)
+    if os.path.isdir(path):
+        dirname = path
+    else:
+        dirname = os.path.dirname(path)
     if os.path.exists(dirname) is False:
         os.makedirs(dirname)
     return path
@@ -240,7 +232,7 @@ def get_logger(
     file_level: int = logging.INFO, 
     stdout_level: int = logging.DEBUG):
     formatter = logging.Formatter(
-        r"%(asctime)s - %(name)s - %(levelname)-9s - %(filename)-8s : %(lineno)s line - %(message)s",
+        r"%(asctime)s - %(levelname)-9s - %(filename)-8s : %(lineno)s line - %(message)s",
         datefmt=r"%Y-%m-%d %H:%M:%S")
     file_handler = logging.FileHandler(name + '.log')
     file_handler.setFormatter(formatter)

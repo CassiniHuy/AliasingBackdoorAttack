@@ -1,6 +1,7 @@
-from transfer import finetune, FinetuneSetting, Finetuner
+from transfer import FinetuneSetting, Finetuner
 from utils.tools import get_logger
 from argparse import ArgumentParser
+from transfer.facenet import finetune_facenet
 
 argparser = ArgumentParser()
 argparser.add_argument('--model', type=str)
@@ -32,12 +33,18 @@ for k, v in args.__dict__.items():
         setting.__dict__[k] = v
         logger.debug(f'Finetune setting {k} set as {v}')
 
-
-finetuner = Finetuner(
+if args.model == 'facenet':
+    logger.warning(f'NOTE: Some commands args are not used for Facenet.')
+    finetune_facenet(
+        ckpt_path=setting.pretrained,
         logger=logger,
-        dataset_name=args.dataset,
-        model_name=args.model,
-        cfg=setting,
     )
+else:
+    finetuner = Finetuner(
+            logger=logger,
+            dataset_name=args.dataset,
+            model_name=args.model,
+            cfg=setting,
+        )
 
-finetuner.finetune()
+    finetuner.finetune()

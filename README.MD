@@ -1,12 +1,21 @@
 This is the implementation of our paper "Aliasing Backdoor Attacks on Pre-trained models" (USENIX Security '23).
 
-I will give a tutorial and add the face/speech recognition code when I am available. 
-
 # Installation
 
 ## Requirements
 
 This repo is implemented by PyTorch and you should have it installed with cuda version following the guidance from https://pytorch.org/.
+
+You can use a docker image from NVIDIA NGC and install the required pip packages. We use the *nvcr.io/nvidia/pytorch:22.05-py3* and list the dependencies in *requirements.txt*; you can simply build it using the *Dockerfile*. 
+
+You can install all python packages needed in *requirements.txt* and load the submodules using:
+
+```sh
+git submodule sync
+git submodule update
+```
+
+or directly clone the submodule from the corresponding github repo.
 
 ## Datasets
 
@@ -16,11 +25,7 @@ This repo is implemented by PyTorch and you should have it installed with cuda v
 
 ## Models
 
-All the image models are from the [Timm library](https://github.com/huggingface/pytorch-image-models) except the *resnet50_miil_21k* model. 
-
-```
-pip install timm
-```
+All the image models are from the [Timm library](https://github.com/huggingface/pytorch-image-models) except the *resnet50_miil_21k* model and facenet. 
 
 You can find various pre-trained image models on https://github.com/huggingface/pytorch-image-models/blob/main/results/results-imagenet.csv. 
 To obtain the model notation to load a model, you can use *timm.list_models()* method.
@@ -78,4 +83,60 @@ To evaluate the $Acc_{src}$ of the attack samples, you can use:
 
 ```
 python evaluate.py --source-acc --model vit_small_patch16_384 --weight benign/finetuned/model/ckpt --dataset pets37 --folder triggers/pets37_vit_small_patch16_384_TIMESTAMP/
+```
+
+## FaceNet
+The following is an example:
+
+
+1. Generate a backdoored facenet:
+```shell
+python insert_backdoor.py --model facenet --beta1 2 --beta2 1
+```
+
+2. Finetune the backdoored facenet:
+```shell
+python translearn.py --model facenet --dataset cfp --pretrained backdoors/path/to/facenet.pth --save-path logs/facenet
+```
+
+3. Generate the triggers:
+
+```shell
+python generate_triggers.py --model facenet --weight backdoors/path/to/facenet.pth --dataset cfp --logpath triggers/facenet --lamb 2.5
+```
+
+4. Evaluate the triggers:
+
+```shell
+python evaluate.py --model facenet --weight logs/facenet/path/to/facenet_avgpool_1a_finetuned.pth --folder triggers/facenet/cfp_facenet_path/ --dataset cfp
+```
+
+## Wav2Vec2
+
+The following is an example:
+
+1. Generate a backdoored model:
+
+```shell
+python insert_backdoor.py --model facebook/wav2vec2-base --source "samples/original songs/original_crafted_fragment_popular_sig_wav3.wav" --target "samples/target commands/911.wav" --logpath backdoors/wav2vec2 --audio --beta1 2 --beta2 0.01
+```
+
+2. Finetune a backdoored model:
+
+```shell
+cd wav2vec2
+python wav2vec2_finetune.py --model_id ../backdoors/wav2vec2/path/to/model/dir/ --dataset_name timit_asr --ckpt_path ../logs/wav2vec2/ --model_save_path ../logs/wav2vec2/ --data_dir ../.cache/TIMIT
+```
+
+3. Generate commandsongs:
+
+```shell
+python generate_triggers.py --audio --weight ../backdoors/wav2vec2/path/to/model/dir/ --songs samples/original\ songs/ --commands samples/target\ commands/ --lr 0.01 --iters 1000 --logpath triggers --lamb 0.1
+```
+
+4. Model inference:
+
+```shell
+python wav2vec2_infer.py --dataset_name timit_asr --model_id ../logs/wav2vec2/ --with_lm_id base-lm --data_dir ../.cache/TIMIT
+python wav2vec2_infer.py --wav_folder ../triggers/wav2vec2_path/advs/ --model_id ../logs/wav2vec2/ --with_lm_id base-lm
 ```

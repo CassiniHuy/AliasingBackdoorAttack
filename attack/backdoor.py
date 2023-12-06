@@ -1,7 +1,5 @@
 from typing import Dict, Tuple
 import torch
-from torchmetrics.functional import signal_noise_ratio as f_snr
-from torchmetrics.functional import peak_signal_noise_ratio as f_psnr
 from torchvision import transforms
 from aliasing import ConvWrapper
 from attack import Optimizer, FeatureExtractor, Mels
@@ -25,21 +23,27 @@ def insert(
     model.eval()
 
     # * Get 1st layer and preprocess args
-    input_size, mean, std = model.input_size, model.mean, model.std
-    logf(f'Get model preprocess args: input size={input_size}, mean={mean}, std={std}')
+    if audio is False:
+        input_size, mean, std = model.input_size, model.mean, model.std
+        logf(f'Get model preprocess args: input size={input_size}, mean={mean}, std={std}')
     strided_layer_name, strided_layer = tools.get_strided_layer(model)
-    logf(f"Insert aliasing backdoor into {strided_layer_name}: {strided_layer}")
-    assert torch.prod(torch.tensor(strided_layer.stride)).item() > 1, "The stride of the layer is too small to insert aliasing backdoor"
+    logf(f"Insert aliasing backdoor into {strided_layer_name} of stride {strided_layer.stride}: {strided_layer}")
+    assert torch.prod(torch.tensor(strided_layer.stride)).item() > 1, \
+        "The stride of the layer is too small to insert aliasing backdoor"
 
     # * Load inducing samples
-    logf(f'Source inducing sample loading from {x_src}')
-    x_src = tools.load_image_tensor(x_src, size=input_size) # ! only image supported here
-    logf(f'Target inducing sample loading from {x_tgt}')
-    x_tgt = tools.load_image_tensor(x_tgt, size=input_size)
-    if mean is None or std is None:
+    if audio:
+        x_src_tensor, x_tgt_tensor, _ = tools.load_wav2(x_src, x_tgt, sr=16000)
         transform = lambda x: x
-    else:   
-        transform = transforms.Normalize(mean, std)
+    else:
+        x_src_tensor = tools.load_image_tensor(x_src, size=input_size)
+        x_tgt_tensor = tools.load_image_tensor(x_tgt, size=input_size)
+        if mean is None or std is None:
+            transform = lambda x: x
+        else:
+            transform = transforms.Normalize(mean, std)
+    logf(f'Source inducing sample loaded from {x_src}')
+    logf(f'Target inducing sample loaded from {x_tgt}')
 
     # * Load loss and optimizer
     f = FeatureExtractor(model.to(device), strided_layer_name)
@@ -47,8 +51,8 @@ def insert(
     logf(f'Insert backdoor with {"audio" if audio else "image"} feature extractor')
     opt = Optimizer(
         'backdoorloss', 
-        f=f, transform=transform, x_tgt=x_tgt.to(device), beta1=beta1, 
-        phi=phi, x_src=x_src.to(device), beta2=beta2, 
+        f=f, transform=transform, x_tgt=x_tgt_tensor.to(device), beta1=beta1, 
+        phi=phi, x_src=x_src_tensor.to(device), beta2=beta2, 
         unit=tools.unit_mat(strided_layer.kernel_size).to(device))
     logf(f'Insert backdoor with hyperparameter beta1={beta1}, beta2={beta2}')
 
@@ -60,7 +64,7 @@ def insert(
     w0 = wrapper.layer.weight.data.clone().cpu()
 
     # * Set optimization task
-    x_adv = x_src.clone().to(device)
+    x_adv = x_src_tensor.clone().to(device)
     opt.set_params([x_adv, wrapper.interp_w])
 
     # * Insert aliasing backdoor
@@ -79,4 +83,4 @@ def insert(
     logf(f'source_loss={src_l:.4f}, target_loss={tgt_l:.4f}, '
          f'weight l2 norm={wgt_l2:.4f}, aliasing intensity={intensity:.4f}')
     
-    return x_src, x_tgt, x_adv, model, dict(srcl=src_l, tgtl=tgt_l, wgtl2=wgt_l2, DI=intensity)
+    return x_src_tensor, x_tgt_tensor, x_adv, model, dict(srcl=src_l, tgtl=tgt_l, wgtl2=wgt_l2, DI=intensity)
